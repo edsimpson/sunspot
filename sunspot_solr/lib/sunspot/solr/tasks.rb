@@ -1,49 +1,51 @@
-namespace :sunspot do
-  namespace :solr do
-    desc 'Start the Solr instance'
-    task :start => :environment do
-      case RUBY_PLATFORM
-      when /w(in)?32$/, /java$/
-        abort("This command is not supported on #{RUBY_PLATFORM}. " +
-              "Use rake sunspot:solr:run to run Solr in the foreground.")
+unless defined?(Rails) && Rails.env.production?
+  namespace :sunspot do
+    namespace :solr do
+      desc 'Start the Solr instance'
+      task :start => :environment do
+        case RUBY_PLATFORM
+        when /w(in)?32$/, /java$/
+          abort("This command is not supported on #{RUBY_PLATFORM}. " +
+                "Use rake sunspot:solr:run to run Solr in the foreground.")
+        end
+
+        server.start
+        puts "Successfully started Solr ..."
       end
 
-      if defined?(Sunspot::Rails::Server)
-        Sunspot::Rails::Server.new.start
-      else
-        Sunspot::Solr::Server.new.start
+      desc 'Run the Solr instance in the foreground'
+      task :run => :environment do
+        server.run
       end
 
-      puts "Successfully started Solr ..."
+      desc 'Stop the Solr instance'
+      task :stop => :environment do
+        case RUBY_PLATFORM
+        when /w(in)?32$/, /java$/
+          abort("This command is not supported on #{RUBY_PLATFORM}. " +
+                "Use rake sunspot:solr:run to run Solr in the foreground.")
+        end
+
+        server.stop
+        puts "Successfully stopped Solr ..."
+      end
+
+      # for backwards compatibility
+      task :reindex => :"sunspot:reindex"
+      
+      def server
+        svr = if defined?(Sunspot::Rails::Server)
+          Sunspot::Rails::Server.new
+        else
+          Sunspot::Solr::Server.new
+        end
+        
+        if defined?(Rails) && Rails::VERSION::MAJOR >= 4
+          svr.solr_data_dir = File.expand_path("solr/data/#{Rails.env}")
+        end
+        
+        svr
+      end
     end
-
-    desc 'Run the Solr instance in the foreground'
-    task :run => :environment do
-      if defined?(Sunspot::Rails::Server)
-        Sunspot::Rails::Server.new.run
-      else
-        Sunspot::Solr::Server.new.run
-      end
-    end
-
-    desc 'Stop the Solr instance'
-    task :stop => :environment do
-      case RUBY_PLATFORM
-      when /w(in)?32$/, /java$/
-        abort("This command is not supported on #{RUBY_PLATFORM}. " +
-              "Use rake sunspot:solr:run to run Solr in the foreground.")
-      end
-
-      if defined?(Sunspot::Rails::Server)
-        Sunspot::Rails::Server.new.stop
-      else
-        Sunspot::Solr::Server.new.stop
-      end
-
-      puts "Successfully stopped Solr ..."
-    end
-
-    # for backwards compatibility
-    task :reindex => :"sunspot:reindex"
   end
 end
